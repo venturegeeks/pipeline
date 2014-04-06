@@ -25,6 +25,7 @@ process.stdin.on( 'readable', function() {
 */
 
 process.stdin.on( 'data', function( d ) {
+    // console.error( 'message on', process.pid, d.toString() );
     var messages = d.toString().split( '\n' );
     var i = 0;
     while ( i < messages.length ) {
@@ -34,11 +35,14 @@ process.stdin.on( 'data', function( d ) {
             continue;
         }
         if ( script ) {
+            if ( message == 'ready' ) { // TODO: temporary fix
+                return; 
+            }
             _data = parseFloat( message ); // TODO: other types
             // context[ '_data' ] = parseFloat( message );
             var _result = script( _data );
             // var _result = script.runInNewContext( context );
-            console.error( 'process', process.pid, message, _result );
+            console.error( 'process', process.pid, JSON.stringify( message ), _result );
             if ( _result ) {
                 process.stdout.write( _result + '\n' );
                 // console.log( _result );
@@ -61,4 +65,10 @@ process.stdin.on( 'end', function() {
     process.exit();
 } );
 
-// console.error( 'process', process.pid, 'ready' );
+console.log( 'ready' );
+/*
+var fs = require( 'fs' );
+var BUFFSIZE = 1024;
+var buf = new Buffer( BUFFSIZE );
+var bytes = fs.readSync( process.stdin.fd, buf, 0, BUFFSIZE );
+*/
