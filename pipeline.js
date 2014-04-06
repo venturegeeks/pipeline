@@ -19,25 +19,14 @@ function Pipeline( f, context ) {
     context = context || {};
 
     var self = this;
-    this.ready = false;
 
     if ( f ) {
-        var proc = this.proc = child_process.spawn( 'node', [ './job.js' ], { stdio: [ 'pipe', 'pipe', process.stderr ] } );
-        console.log( 'forked child', proc.pid );
+        var proc = this.proc = child_process.spawn( 'node', [ './job.js', JSON.stringify( { type: 'job', data: f, context: context }, functionReplacer ) ], { stdio: [ 'pipe', 'pipe', process.stderr ] } );
+        // console.log( 'forked child', proc.pid );
         
         proc.stdin.on( 'error', function() {
             console.log( 'error on stdin of', proc.pid );
         } );
-
-        proc.stdin.on( 'readable', function() {
-            console.log( 'readable stdin of', proc.pid );
-        } );
-
-        proc.stdin.write( JSON.stringify( { 
-            type: 'job', 
-            data: f,
-            context: context
-        }, functionReplacer ) + '\n', 'utf-8' );
 
         proc.stdout.on( 'data', function( m ) {
             // console.log( 'reading from child', m.toString(), 'end reading' );
@@ -46,26 +35,18 @@ function Pipeline( f, context ) {
                 if ( !message.length ) {
                     return;
                 }
-                if ( !self.ready && message == "ready" ) {
-                    self.ready = true;
-                    self.emit( 'ready' );
-                    return;
-                }
                 message = +message; // TODO: other types
                 // console.log( 'child sent data', proc.pid, message );
                 if ( message ) {
-                    self.emit( 'item', message );
+                    // self.emit( 'item', message );
                 }
-                /*
-                if ( !self.children.length || !self.children[ 0 ].ready ) {
-                    self.data.push( message );
-                }
-                */
+                self.data.push( message );
             } );
         } );
 
+
         proc.on( 'exit', function() {
-            console.log( 'proc', proc.pid, 'finished' );
+            // console.log( 'proc', proc.pid, 'finished' );
             self.complete();
         } );
     }
@@ -80,21 +61,6 @@ Pipeline.prototype.fork = function( f, context ) {
     }
     this.children.push( child );
     var self = this;
-    // child.on( 'ready', function() {
-        /*
-        for ( var i = 0; i < self.data.length; ++i ) {
-            console.log( 'writing', self.data[ i ], 'to', child.proc.pid );
-            var result = child.proc.stdin.write( self.data[ i ] + '\n' );
-            if ( !result ) {
-                console.error( 'failed writing to', child.proc.pid );
-            }
-        }
-        self.data = [];
-        if ( self.completed ) {
-            child.proc.stdin.end();
-        }
-        */
-    // } );
     return child;
 };
 
@@ -114,23 +80,6 @@ Pipeline.prototype.reduce = function( init, f ) {
         return sofar;
     }, { f: f, sofar: init } );
 };
-/*
-Pipeline.prototype.write = function( item ) {
-    if ( !this.children.length ) {
-        this.data.push( item );
-    }
-    else {
-        for ( var i = 0; i < this.children.length; ++i ) {
-            // console.log( 'sending to child', this.children[ i ].proc.pid, item );
-            var result = this.children[ i ].proc.stdin.write( item + '\n' );
-            if ( !result ) {
-                console.error( 'failed writing to', child.proc.pid );
-            }
-        }
-    }
-    this.emit( 'item', item );
-};
-*/
 Pipeline.prototype.complete = function() {
     this.children.forEach( function( child ) {
         child.proc.stdin.end();
@@ -140,7 +89,7 @@ Pipeline.prototype.complete = function() {
     this.completed = true;
 };
 Pipeline.prototype.close = function() {
-    console.log( 'killing proc', proc.pid );
+    // console.log( 'killing proc', proc.pid );
     if ( proc ) {
         proc.kill();
     }
@@ -149,35 +98,35 @@ Pipeline.prototype.close = function() {
     } );
 };
 Pipeline.range = function( start, end ) {
+                //process.stdout.write( message, 'ascii' );
     var pipeline = new Pipeline( function() {
         var message = '';
-        for ( var i = start; i < end; ++i ) {
+        var i = start;
+        while ( i < end ) {
             message += i + '\n';
             if ( message.length > 2000 ) {
-                process.stdout.write( message, 'ascii' );
+                fs.write( 1, new Buffer( message, 'ascii' ), 0, message.length, null );
                 message = '';
             }
+            i += 1;
         }
-        process.stdout.write( message );
-        console.error( 'range finished' );
+        fs.write( 1, new Buffer( message, 'ascii' ), 0, message.length, null );
         process.exit();
     }, { start: start, end: end } );
-    pipeline.on( 'ready', function() {
-        console.log( 'ready time', process.hrtime( t1 )[ 1 ] / 1000000 );
-        pipeline.proc.stdin.write( 1 + '\n' );
-    } );
+    // console.log( 'ready time', process.hrtime( t1 )[ 1 ] / 1000000 );
+    pipeline.proc.stdin.write( 1 + '\n', 'ascii' );
     return pipeline;
 };
 
-/*
-Pipeline.range( 1, 100000 ).filter( function( x ) {
+var p = Pipeline.range( 1, 1000 ).filter( function( x ) {
     return ( x % 3 == 0 || x % 5 == 0 );
 } ).reduce( 0, function( x, sum ) {
     return x + sum;
 } ).on( 'complete', function( data ) {
     console.log( 'total', data[ data.length - 1 ] );
 } );
-*/
-Pipeline.range( 1, 10000000 ).on( 'complete', function( data ) {
-    console.log( 'range complete' );
+/*
+Pipeline.range( 1, 1000000 ).on( 'complete', function() {
+    console.log( 'range' );
 } );
+*/
