@@ -150,22 +150,34 @@ Pipeline.prototype.close = function() {
 };
 Pipeline.range = function( start, end ) {
     var pipeline = new Pipeline( function() {
+        var message = '';
         for ( var i = start; i < end; ++i ) {
-            process.stdout.write( i + '\n' );
+            message += i + '\n';
+            if ( message.length > 2000 ) {
+                process.stdout.write( message, 'ascii' );
+                message = '';
+            }
         }
+        process.stdout.write( message );
         console.error( 'range finished' );
         process.exit();
     }, { start: start, end: end } );
     pipeline.on( 'ready', function() {
+        console.log( 'ready time', process.hrtime( t1 )[ 1 ] / 1000000 );
         pipeline.proc.stdin.write( 1 + '\n' );
     } );
     return pipeline;
 };
 
+/*
 Pipeline.range( 1, 100000 ).filter( function( x ) {
     return ( x % 3 == 0 || x % 5 == 0 );
 } ).reduce( 0, function( x, sum ) {
     return x + sum;
 } ).on( 'complete', function( data ) {
     console.log( 'total', data[ data.length - 1 ] );
+} );
+*/
+Pipeline.range( 1, 10000000 ).on( 'complete', function( data ) {
+    console.log( 'range complete' );
 } );

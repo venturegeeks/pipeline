@@ -24,9 +24,14 @@ process.stdin.on( 'readable', function() {
 } );
 */
 
-process.stdin.on( 'data', function( d ) {
+// process.stdin.on( 'data', function( d ) {
+process.stdin.on( 'readable', function() {
+    var d = process.stdin.read();
+    if ( d === null ) {
+        return;
+    }
     // console.error( 'message on', process.pid, d.toString() );
-    var messages = d.toString().split( '\n' );
+    var messages = d.toString('ascii').split( '\n' );
     var i = 0;
     while ( i < messages.length ) {
         message = messages[ i ].trim();
