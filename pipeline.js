@@ -21,7 +21,7 @@ function Pipeline( f, context, opts ) {
     EventEmitter.call( this );
 
     this.children = [];
-    this.data = [];
+    this.data = null;
 
     context = context || {};
     opts = opts || {};
@@ -49,11 +49,11 @@ function Pipeline( f, context, opts ) {
                 if ( opts.outputFormat == 'number' ) {
                     message = +message;
                 }
+                self.updateData( message );
                 // console.log( 'child sent data', proc.pid, message );
                 if ( message ) {
                     self.emit( 'item', message );
                 }
-                self.data.push( message );
             } );
         } );
 
@@ -70,7 +70,7 @@ inherits( Pipeline, EventEmitter );
 Pipeline.prototype.fork = function( f, context, opts ) {
     opts = opts || {};
     if ( !opts.inputFormat ) {
-        opts.inputFormat = this.opts.inputFormat;
+        opts.inputFormat = this.opts.outputFormat;
     }
     if ( !opts.outputFormat ) {
         opts.outputFormat = opts.inputFormat;
@@ -82,7 +82,12 @@ Pipeline.prototype.fork = function( f, context, opts ) {
     this.children.push( child );
     return child;
 };
-
+Pipeline.prototype.updateData = function( item ) {
+    if ( !this.data ) {
+        this.data = [];
+    }
+    this.data.push( item );
+};
 Pipeline.prototype.map = function( f, opts ) {
     return this.fork( f, {}, opts );
 };
@@ -94,10 +99,14 @@ Pipeline.prototype.filter = function( f, opts ) {
     }, { f: f }, opts );
 };
 Pipeline.prototype.reduce = function( init, f, opts ) {
-    return this.fork( function( x ) {
+    var pipeline = this.fork( function( x ) {
         sofar = f( x, sofar );
         return sofar;
     }, { f: f, sofar: init }, opts );
+    pipeline.updateData = function( item ) {
+        pipeline.data = item;
+    };
+    return pipeline;
 };
 Pipeline.prototype.complete = function() {
     this.children.forEach( function( child ) {
