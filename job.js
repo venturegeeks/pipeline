@@ -27,8 +27,9 @@ function functionReviver(key, value) {
 }
 
 var outbuf = '';
+var d = '';
 process.stdin.on( 'readable', function() {
-    var d = process.stdin.read();
+    d += process.stdin.read();
     if ( d === null ) {
         return;
     }
@@ -38,6 +39,11 @@ process.stdin.on( 'readable', function() {
     while ( i < messages.length ) {
         // message = messages[ i ].trim();
         message = messages[ i ];
+        if ( i == messages.length - 1 ) {
+            d = message;
+            ++i;
+            continue;
+        }
         if ( !message.length ) {
             //console.error( "no length", message, +message, script( +message ) );
             ++i;
@@ -56,10 +62,13 @@ process.stdin.on( 'readable', function() {
             outbuf += _result + '\n';
             if ( outbuf.length > 100 || ending ) {
                 // if ( ending ) { console.error( 'ending' ); }
+                /*
                 var b = fs.writeSync( 1, new Buffer( outbuf, 'ascii' ), 0, outbuf.length, null, function(){} );
                 if ( b != outbuf.length ) {
                     console.error( 'error writing on job', process.pid, b.length, outbuf.length );
                 }
+                */
+                var b = process.stdout.write( outbuf, 'ascii' );
                 if ( b ) {
                     outbuf = '';
                 }
@@ -76,7 +85,8 @@ var ending = false;
 process.stdin.on( 'end', function() {
     ending = true;
     // console.error( 'data on end', outbuf.length, outbuf );
-    fs.writeSync( 1, new Buffer( outbuf, 'ascii' ), 0, outbuf.length, null );
+    // fs.writeSync( 1, new Buffer( outbuf, 'ascii' ), 0, outbuf.length, null );
+    process.stdout.write( outbuf, 'ascii' ); 
     outbuf = '';
     // process.exit();
 } );

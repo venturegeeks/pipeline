@@ -34,7 +34,7 @@ function Pipeline( f, context ) {
                 if ( !message.length ) {
                     return;
                 }
-                message = +message; // TODO: other types
+                message = +parseFloat( message ); // TODO: other types
                 // console.log( 'child sent data', proc.pid, message );
                 if ( message ) {
                     self.emit( 'item', message );
@@ -81,7 +81,7 @@ Pipeline.prototype.reduce = function( init, f ) {
 };
 Pipeline.prototype.complete = function() {
     this.children.forEach( function( child ) {
-        // child.proc.stdin.end();
+        child.proc.stdin.end();
     } );
     // console.log( 'completed', this.data );
     this.emit( 'complete', this.data );
@@ -103,17 +103,14 @@ Pipeline.range = function( start, end ) {
         while ( i < end ) {
             message += i + '\n';
             if ( message.length > 100 ) {
-                var b = fs.writeSync( 1, new Buffer( message, 'ascii' ), 0, message.length, null );
-                if ( b != message.length ) {
-                    console.error( 'error writing on range' );
-                }
+                var b = process.stdout.write( message, 'ascii' );
                 if ( b ) {
                     message = '';
                 }
             }
             i += 1;
         }
-        fs.writeSync( 1, new Buffer( message, 'ascii' ), 0, message.length, null );
+        var b = process.stdout.write( message, 'ascii' );
         process.exit();
     }, { start: start, end: end } );
     // console.log( 'ready time', process.hrtime( t1 )[ 1 ] / 1000000 );
