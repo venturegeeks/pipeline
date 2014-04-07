@@ -24,7 +24,6 @@
     "test": "./node_modules/.bin/mocha -b test/spec -u bdd  -R spec"
   },
   "dependencies": {
-    "cip": "~0.2.4"
   },
   "devDependencies": {
     "mocha": "~1.18.2",

@@ -1,3 +1,11 @@
+/*
+ * Pipeline
+ * ...
+ * https://github.com/venturegeeks/pipeline
+ *
+ * Copyright (c) 2014 VentureGeeks
+ * Licensed under the MIT license.
+ */
 var childProcess = require( 'child_process' );
 var EventEmitter = require( 'events' ).EventEmitter;
 var inherits = require( 'util' ).inherits;
