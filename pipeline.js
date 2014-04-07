@@ -135,7 +135,28 @@ Pipeline.range = function( start, end ) {
     }, { start: start, end: end },
     { inputFormat: 'number', outputFormat: 'number' } );
     // console.log( 'ready time', process.hrtime( t1 )[ 1 ] / 1000000 );
-    pipeline.proc.stdin.write( 1 + '\n', 'ascii' );
+    pipeline.proc.stdin.write( 1 + '\n', 'ascii' ); // send a start signal
+    return pipeline;
+};
+Pipeline.readFile = function( fileName ) {
+    var pipeline = new Pipeline( function() {
+        var fd = fs.openSync( fileName, 'r' );
+        if ( !fd ) {
+            console.error( 'Error reading file', fileName );
+            return;
+        }
+        while ( true ) {
+            var buffer = new Buffer( 512, 'ascii' );
+            var bytesRead = fs.readSync( fd, buffer, 0, 512 );
+            // console.error( buffer.toString( 'ascii' ) );
+            if ( !bytesRead ) {
+                break;
+            }
+            process.stdout.write( buffer, 'ascii' );
+        }
+        process.exit();
+    }, { fileName: fileName }, { outputFormat: 'string' } );
+    pipeline.proc.stdin.write( 1 + '\n', 'ascii' ); // send a start signal
     return pipeline;
 };
 
