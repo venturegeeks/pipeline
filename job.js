@@ -1,7 +1,5 @@
 var fs = require( 'fs' );
 
-var arg = process.argv[ 2 ];
-
 function functionReviver(key, value) {
     if (key === '') {
         return value;
@@ -22,15 +20,17 @@ function functionReviver(key, value) {
     return value;
 }
 
-var msg = JSON.parse( arg, functionReviver );
+var arg = process.argv[ 2 ];
+var opts = JSON.parse( arg, functionReviver );
+var outputFormat = opts.outputFormat;
+var inputFormat = opts.inputFormat;
 
-var script = msg.script;
-var context = msg.context || {};
+var script = opts.script;
+var context = opts.context || {};
 for ( var i in context ) {
     global[ i ] = context[ i ];
 }
 global.fs = fs;
-var ending = false;
 
 var outbuf = '';
 var d = '';
@@ -53,7 +53,12 @@ process.stdin.on( 'readable', function() {
             ++i;
             continue;
         }
-        _data = +message; // TODO: other types
+        if ( inputFormat == 'number' ) {
+            _data = +message; // TODO: other types
+        }
+        else {
+            _data = message;
+        }
         var _result;
         if ( _data ) {
             _result = script( _data );
@@ -62,7 +67,7 @@ process.stdin.on( 'readable', function() {
         // console.error( 'process', process.pid, JSON.stringify( message ), _result );
         if ( _result ) {
             outbuf += _result + '\n';
-            if ( outbuf.length > 100 || ending ) {
+            if ( outbuf.length > 100 ) {
                 var b = process.stdout.write( outbuf, 'ascii' );
                 if ( b ) {
                     outbuf = '';
@@ -75,7 +80,6 @@ process.stdin.on( 'readable', function() {
 
 
 process.stdin.on( 'end', function() {
-    ending = true;
     // console.error( 'data on end', outbuf.length, outbuf );
     process.stdout.write( outbuf, 'ascii' );
     outbuf = '';

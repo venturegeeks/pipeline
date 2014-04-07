@@ -17,18 +17,22 @@ function functionReplacer(key, value) {
     return value;
 }
 
-function Pipeline( f, context ) {
+function Pipeline( f, context, opts ) {
     EventEmitter.call( this );
 
     this.children = [];
     this.data = [];
 
     context = context || {};
+    opts = opts || {};
+    opts.outputFormat = opts.outputFormat || 'string';
+    opts.inputFormat = opts.inputFormat || 'string';
+    this.opts = opts;
 
     var self = this;
 
     if ( f ) {
-        proc = this.proc = childProcess.spawn( 'node', [ './job.js', JSON.stringify( { script: f, context: context }, functionReplacer ) ], { stdio: [ 'pipe', 'pipe', process.stderr ] } );
+        proc = this.proc = childProcess.spawn( 'node', [ './job.js', JSON.stringify( { script: f, context: context, ouputFormat: opts.outputFormat, inputFormat: opts.inputFormat }, functionReplacer ) ], { stdio: [ 'pipe', 'pipe', process.stderr ] } );
         // console.log( 'forked child', proc.pid );
 
         proc.stdin.on( 'error', function() {
@@ -42,7 +46,9 @@ function Pipeline( f, context ) {
                 if ( !message.length ) {
                     return;
                 }
-                message = +parseFloat( message ); // TODO: other types
+                if ( opts.outputFormat == 'number' ) {
+                    message = +message;
+                }
                 // console.log( 'child sent data', proc.pid, message );
                 if ( message ) {
                     self.emit( 'item', message );
@@ -61,8 +67,15 @@ function Pipeline( f, context ) {
 
 inherits( Pipeline, EventEmitter );
 
-Pipeline.prototype.fork = function( f, context ) {
-    var child = new Pipeline( f, context );
+Pipeline.prototype.fork = function( f, context, opts ) {
+    opts = opts || {};
+    if ( !opts.inputFormat ) {
+        opts.inputFormat = this.opts.inputFormat;
+    }
+    if ( !opts.outputFormat ) {
+        opts.outputFormat = opts.inputFormat;
+    }
+    var child = new Pipeline( f, context, opts );
     if ( this.proc ) {
         this.proc.stdout.pipe( child.proc.stdin );
     }
@@ -70,21 +83,21 @@ Pipeline.prototype.fork = function( f, context ) {
     return child;
 };
 
-Pipeline.prototype.map = function( f ) {
-    return this.fork( f );
+Pipeline.prototype.map = function( f, opts ) {
+    return this.fork( f, {}, opts );
 };
-Pipeline.prototype.filter = function( f ) {
+Pipeline.prototype.filter = function( f, opts ) {
     return this.fork( function( x ) {
         if ( f( x ) ) {
             return x;
         }
-    }, { f: f } );
+    }, { f: f }, opts );
 };
-Pipeline.prototype.reduce = function( init, f ) {
+Pipeline.prototype.reduce = function( init, f, opts ) {
     return this.fork( function( x ) {
         sofar = f( x, sofar );
         return sofar;
-    }, { f: f, sofar: init } );
+    }, { f: f, sofar: init }, opts );
 };
 Pipeline.prototype.complete = function() {
     this.children.forEach( function( child ) {
@@ -119,7 +132,8 @@ Pipeline.range = function( start, end ) {
         }
         process.stdout.write( message, 'ascii' );
         process.exit();
-    }, { start: start, end: end } );
+    }, { start: start, end: end },
+    { inputFormat: 'number', outputFormat: 'number' } );
     // console.log( 'ready time', process.hrtime( t1 )[ 1 ] / 1000000 );
     pipeline.proc.stdin.write( 1 + '\n', 'ascii' );
     return pipeline;
