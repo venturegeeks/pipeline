@@ -1,30 +1,38 @@
-var vm = require( 'vm' );
 var fs = require( 'fs' );
 
 var arg = process.argv[ 2 ];
+
+
+function functionReviver(key, value) {
+    if (key === '') {
+        return value;
+    }
+
+    if (typeof value === 'string') {
+        var rfunc = /^function[^\(]*\(([^\)]*)\)[^\{]*{([\s\S]*)\}$/,
+            match = value.match(rfunc);
+
+        if (match) {
+            var args = match[1].split(',').map(function(arg) { return arg.replace(/\s+/, ''); });
+            // console.error( 'matched', match[ 2 ], 'end' );
+
+            /*jshint evil:true */
+            return new Function(args, match[2]);
+        }
+    }
+    return value;
+}
+
+
 var msg = JSON.parse( arg, functionReviver );
+
 var script = msg.script;
 var context = msg.context || {};
 for ( var i in context ) {
     global[ i ] = context[ i ];
 }
 global.fs = fs;
-
-function functionReviver(key, value) {
-    if (key === "") return value;
-    
-    if (typeof value === 'string') {
-        var rfunc = /^function[^\(]*\(([^\)]*)\)[^\{]*{([\s\S]*)\}$/,
-            match = value.match(rfunc);
-        
-        if (match) {
-            var args = match[1].split(',').map(function(arg) { return arg.replace(/\s+/, ''); });
-            // console.error( 'matched', match[ 2 ], 'end' );
-            return new Function(args, match[2]);
-        }
-    }
-    return value;
-}
+var ending = false;
 
 var outbuf = '';
 var d = '';
@@ -39,7 +47,7 @@ process.stdin.on( 'readable', function() {
     while ( i < messages.length ) {
         // message = messages[ i ].trim();
         message = messages[ i ];
-        if ( i == messages.length - 1 ) {
+        if (i === messages.length - 1 ) {
             d = message;
             ++i;
             continue;
@@ -50,9 +58,10 @@ process.stdin.on( 'readable', function() {
             continue;
         }
         _data = +message; // TODO: other types
+        var _result;
         // context[ '_data' ] = parseFloat( message );
         if ( _data ) {
-            var _result = script( _data );
+            _result = script( _data );
         }
         // var _result = script.runInNewContext( context );
         // console.error( 'process', process.pid, JSON.stringify( message ), _result );
@@ -80,14 +89,14 @@ process.stdin.on( 'readable', function() {
     }
 } );
 
-var ending = false;
 
 process.stdin.on( 'end', function() {
     ending = true;
     // console.error( 'data on end', outbuf.length, outbuf );
     // fs.writeSync( 1, new Buffer( outbuf, 'ascii' ), 0, outbuf.length, null );
-    process.stdout.write( outbuf, 'ascii' ); 
+    process.stdout.write( outbuf, 'ascii' );
     outbuf = '';
     // process.exit();
 } );
 // console.error( 'process:', process.pid, 'job:', script, 'context: ', context );
+
