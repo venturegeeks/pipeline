@@ -2,8 +2,6 @@ var childProcess = require( 'child_process' );
 var EventEmitter = require( 'events' ).EventEmitter;
 var inherits = require( 'util' ).inherits;
 
-var proc;
-
 function functionReplacer(key, value) {
     if (typeof(value) === 'function') {
         return value.toString().replace( /\n/g, ' ' );
@@ -31,7 +29,7 @@ function Pipeline( f, context ) {
 
         proc.stdout.on( 'data', function( m ) {
             // console.log( 'reading from child', m.toString(), 'end reading' );
-            var messages = m.toString().split( '\n' );
+            messages = m.toString().split( '\n' );
             messages.forEach( function( message ) {
                 if ( !message.length ) {
                     return;
@@ -76,7 +74,7 @@ Pipeline.prototype.filter = function( f ) {
 };
 Pipeline.prototype.reduce = function( init, f ) {
     return this.fork( function( x ) {
-        var sofar = f( x, sofar );
+        sofar = f( x, sofar );
         return sofar;
     }, { f: f, sofar: init } );
 };
