@@ -1,0 +1,33 @@
+{
+  "name": "pipeline",
+  "private": true,
+  "version": "0.0.0",
+  "main": "./pipeline",
+  "description": "",
+  "homepage": "https://github.com/venturegeeks/pipeline",
+  "bugs": "https://github.com/venturegeeks/pipeline/issues",
+  "author": {
+    "name": "Aleksis Brezas",
+    "email": "abresas@gmail.com",
+    "url": "https://github.com/abresas"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/venturegeeks/pipeline"
+  },
+  "licenses": [
+    {
+      "type": "MIT"
+    }
+  ],
+  "scripts": {
+    "test": "./node_modules/.bin/mocha -b test/spec -u bdd  -R spec"
+  },
+  "dependencies": {
+  },
+  "devDependencies": {
+    "mocha": "~1.18.2",
+    "chai": "~1.9.1",
+    "sinon": "~1.9.1"
+  }
+}
