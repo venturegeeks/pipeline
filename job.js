@@ -46,7 +46,7 @@ process.stdin.on( 'readable', function() {
     var i = 0;
     while ( i < messages.length ) {
         // message = messages[ i ].trim();
-        var message = messages[ i ];
+        message = messages[ i ];
         if (i === messages.length - 1 ) {
             d = message;
             ++i;
@@ -57,7 +57,7 @@ process.stdin.on( 'readable', function() {
             ++i;
             continue;
         }
-        var _data = +message; // TODO: other types
+        _data = +message; // TODO: other types
         var _result;
         // context[ '_data' ] = parseFloat( message );
         if ( _data ) {
