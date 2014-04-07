@@ -1,19 +1,4 @@
-/**
- * Project specific jshint linting options.
- *
- * Forked from Airbnb JSHint settings.
- *
- * @version 0.4.3
- * @source
- * @see http://www.jshint.com/docs/
- * @see https://github.com/airbnb/javascript * Forked of Airbnb JSHint settings.
- */
 {
-  /*
-   * ENVIRONMENTS
-   * =================
-   */
-
   // Define globals exposed by modern browsers.
   "browser": false,
 
@@ -23,20 +8,11 @@
   // Define globals exposed by Node.js.
   "node": true,
 
-  /*
-   * TABS AND QUOTES
-   * ==================
-   */
   // Enforce tab width of 2 spaces.
   "indent": 4,
 
   // Enforce use of single quotation marks for strings.
   "quotmark": "single",
-
-  /*
-   * ENFORCING OPTIONS
-   * =================
-   */
 
   // This option requires you to always put curly braces
   // around blocks in loops and conditionals.
@@ -88,21 +64,7 @@
   // suppress object dot notation warnings, we know what we're doing
   "sub": true,
 
-  /**
-   * TEMPORARY OPTIONS
-   * =================
-   *
-   * These are provisional options for legacy code.
-   *
-   */
-
-  /**
-   * PROJECT GLOBALS
-   * ================
-   *
-   */
   "globals": {
-    /* MOCHA */
     "suite": false,
     "test": false,
     "describe": false,
@@ -116,6 +78,6 @@
     "assert": false,
     "message": false,
     "proc": false,
-    "sofar": false,
+    "sofar": false
   }
 }
