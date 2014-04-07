@@ -5,14 +5,14 @@
  *
  * Copyright (c) 2014 VentureGeeks
  * Licensed under the MIT license.
- */
+*/
 var childProcess = require( 'child_process' );
 var EventEmitter = require( 'events' ).EventEmitter;
 var inherits = require( 'util' ).inherits;
 
 function functionReplacer(key, value) {
     if (typeof(value) === 'function') {
-        return value.toString().replace( /\n/g, ' ' );
+        return value.toString();
     }
     return value;
 }
