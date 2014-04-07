@@ -1,7 +1,6 @@
 var child_process = require( 'child_process' );
 var EventEmitter = require( 'events' ).EventEmitter;
 var inherits = require( 'util' ).inherits;
-var t1 = process.hrtime();
 
 function functionReplacer(key, value) {
     if (typeof(value) === 'function') {
@@ -21,7 +20,7 @@ function Pipeline( f, context ) {
     var self = this;
 
     if ( f ) {
-        var proc = this.proc = child_process.spawn( 'node', [ './job.js', JSON.stringify( { type: 'job', data: f, context: context }, functionReplacer ) ], { stdio: [ 'pipe', 'pipe', process.stderr ] } );
+        var proc = this.proc = child_process.spawn( 'node', [ './job.js', JSON.stringify( { script: f, context: context }, functionReplacer ) ], { stdio: [ 'pipe', 'pipe', process.stderr ] } );
         // console.log( 'forked child', proc.pid );
         
         proc.stdin.on( 'error', function() {
@@ -38,7 +37,7 @@ function Pipeline( f, context ) {
                 message = +message; // TODO: other types
                 // console.log( 'child sent data', proc.pid, message );
                 if ( message ) {
-                    // self.emit( 'item', message );
+                    self.emit( 'item', message );
                 }
                 self.data.push( message );
             } );
@@ -82,7 +81,7 @@ Pipeline.prototype.reduce = function( init, f ) {
 };
 Pipeline.prototype.complete = function() {
     this.children.forEach( function( child ) {
-        child.proc.stdin.end();
+        // child.proc.stdin.end();
     } );
     // console.log( 'completed', this.data );
     this.emit( 'complete', this.data );
@@ -98,19 +97,23 @@ Pipeline.prototype.close = function() {
     } );
 };
 Pipeline.range = function( start, end ) {
-                //process.stdout.write( message, 'ascii' );
     var pipeline = new Pipeline( function() {
         var message = '';
         var i = start;
         while ( i < end ) {
             message += i + '\n';
-            if ( message.length > 2000 ) {
-                fs.write( 1, new Buffer( message, 'ascii' ), 0, message.length, null );
-                message = '';
+            if ( message.length > 100 ) {
+                var b = fs.writeSync( 1, new Buffer( message, 'ascii' ), 0, message.length, null );
+                if ( b != message.length ) {
+                    console.error( 'error writing on range' );
+                }
+                if ( b ) {
+                    message = '';
+                }
             }
             i += 1;
         }
-        fs.write( 1, new Buffer( message, 'ascii' ), 0, message.length, null );
+        fs.writeSync( 1, new Buffer( message, 'ascii' ), 0, message.length, null );
         process.exit();
     }, { start: start, end: end } );
     // console.log( 'ready time', process.hrtime( t1 )[ 1 ] / 1000000 );
@@ -118,15 +121,4 @@ Pipeline.range = function( start, end ) {
     return pipeline;
 };
 
-var p = Pipeline.range( 1, 1000 ).filter( function( x ) {
-    return ( x % 3 == 0 || x % 5 == 0 );
-} ).reduce( 0, function( x, sum ) {
-    return x + sum;
-} ).on( 'complete', function( data ) {
-    console.log( 'total', data[ data.length - 1 ] );
-} );
-/*
-Pipeline.range( 1, 1000000 ).on( 'complete', function() {
-    console.log( 'range' );
-} );
-*/
+module.exports = exports = Pipeline;

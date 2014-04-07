@@ -1,7 +1,14 @@
 var vm = require( 'vm' );
 var fs = require( 'fs' );
-var script = null;
-var context = null;
+
+var arg = process.argv[ 2 ];
+var msg = JSON.parse( arg, functionReviver );
+var script = msg.script;
+var context = msg.context || {};
+for ( var i in context ) {
+    global[ i ] = context[ i ];
+}
+global.fs = fs;
 
 function functionReviver(key, value) {
     if (key === "") return value;
@@ -19,10 +26,7 @@ function functionReviver(key, value) {
     return value;
 }
 
-global.fs = fs;
-
 var outbuf = '';
-ending = false;
 process.stdin.on( 'readable', function() {
     var d = process.stdin.read();
     if ( d === null ) {
@@ -50,10 +54,15 @@ process.stdin.on( 'readable', function() {
             // outbuf.concat( _result + '\n' );
             // outbuf = Buffer.concat( [ outbuf, new Buffer( _result + '\n', 'ascii' ) ] );
             outbuf += _result + '\n';
-            if ( outbuf.length > 2000 || ending ) {
-                if ( ending ) { console.error( 'ending' ); }
-                fs.write( 1, new Buffer( outbuf, 'ascii' ), 0, outbuf.length, null, function(){} );
-                outbuf = '';
+            if ( outbuf.length > 100 || ending ) {
+                // if ( ending ) { console.error( 'ending' ); }
+                var b = fs.writeSync( 1, new Buffer( outbuf, 'ascii' ), 0, outbuf.length, null, function(){} );
+                if ( b != outbuf.length ) {
+                    console.error( 'error writing on job', process.pid, b.length, outbuf.length );
+                }
+                if ( b ) {
+                    outbuf = '';
+                }
             }
             //process.stdout.write( _result + '\n' );
             // console.log( _result );
@@ -62,18 +71,13 @@ process.stdin.on( 'readable', function() {
     }
 } );
 
+var ending = false;
+
 process.stdin.on( 'end', function() {
     ending = true;
     // console.error( 'data on end', outbuf.length, outbuf );
-    fs.write( 1, new Buffer( outbuf, 'ascii' ), 0, outbuf.length, null );
-    process.exit();
+    fs.writeSync( 1, new Buffer( outbuf, 'ascii' ), 0, outbuf.length, null );
+    outbuf = '';
+    // process.exit();
 } );
-
-var arg = process.argv[ 2 ];
-msg = JSON.parse( arg, functionReviver );
-script = msg.data;
-context = msg.context;
-for ( var i in context ) {
-    global[ i ] = context[ i ];
-}
 // console.error( 'process:', process.pid, 'job:', script, 'context: ', context );
