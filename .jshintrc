@@ -28,7 +28,7 @@
    * ==================
    */
   // Enforce tab width of 2 spaces.
-  "indent": 2,
+  "indent": 4,
 
   // Enforce use of single quotation marks for strings.
   "quotmark": "single",
@@ -66,17 +66,11 @@
   // Suppress warnings about == null comparisons.
   "eqnull": true,
 
-  // Enforce tab width of 2 spaces.
-  "indent": 4,
-
   // Prohibit use of a variable before it is defined.
   "latedef": true,
 
   // Require capitalized names for constructor functions.
   "newcap": true,
-
-  // Enforce use of single quotation marks for strings.
-  "quotmark": "single",
 
   // Prohibit trailing whitespace.
   "trailing": true,
