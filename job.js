@@ -42,8 +42,9 @@ process.stdin.on( 'readable', function() {
     //console.error( 'message on', process.pid, d.toString('ascii') );
     var messages = d.toString('ascii').split( '\n' );
     var i = 0;
+    var _data;
     while ( i < messages.length ) {
-        message = messages[ i ];
+        var message = messages[ i ];
         if (i === messages.length - 1 ) {
             d = message;
             ++i;
@@ -53,7 +54,7 @@ process.stdin.on( 'readable', function() {
             ++i;
             continue;
         }
-        if ( inputFormat == 'number' ) {
+        if ( inputFormat === 'number' ) {
             _data = +message; // TODO: other types
         }
         else {
@@ -66,7 +67,14 @@ process.stdin.on( 'readable', function() {
         // var _result = script.runInNewContext( context );
         // console.error( 'process', process.pid, JSON.stringify( message ), _result );
         if ( _result ) {
-            outbuf += _result + '\n';
+            if ( Array.isArray( _result ) && outputFormat !== 'array' ) {
+                for ( var j = 0; j < _result.length; ++j ) {
+                    outbuf += _result[ j ] + '\n';
+                }
+            }
+            else {
+                outbuf += _result + '\n';
+            }
             if ( outbuf.length > 100 ) {
                 var b = process.stdout.write( outbuf, 'ascii' );
                 if ( b ) {
