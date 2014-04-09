@@ -30,7 +30,7 @@ function Pipeline( f, context, opts ) {
     var self = this;
 
     proc = this.proc = childProcess.spawn( 'node', [ 
-        './job.js', 
+        __dirname + '/job.js', 
         '--script', functionReplacer( '', f ), 
         '--context', JSON.stringify( context, functionReplacer ),
         '--inputFormat', opts.inputFormat,
