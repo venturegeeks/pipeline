@@ -25,48 +25,67 @@ function Pipeline( f, context, opts ) {
 
     context = context || {};
     opts = opts || {};
-    opts.outputFormat = opts.outputFormat || 'string';
-    opts.inputFormat = opts.inputFormat || 'string';
     this.opts = opts;
 
     var self = this;
 
-    if ( f ) {
-        proc = this.proc = childProcess.spawn( 'node', [ './job.js', JSON.stringify( { script: f, context: context, ouputFormat: opts.outputFormat, inputFormat: opts.inputFormat }, functionReplacer ) ], { stdio: [ 'pipe', 'pipe', process.stderr ] } );
-        // console.log( 'forked child', proc.pid );
+    proc = this.proc = childProcess.spawn( 'node', [ 
+        './job.js', 
+        '--script', functionReplacer( '', f ), 
+        '--context', JSON.stringify( context, functionReplacer ),
+        '--inputFormat', opts.inputFormat,
+        '--outputFormat', opts.outputFormat
+    ], {
+        stdio: [ 'pipe', 'pipe', process.stderr, 'ipc' ]
+    } );
+    // console.log( 'forked child', proc.pid );
 
-        proc.stdin.on( 'error', function() {
-            console.log( 'error on stdin of', proc.pid );
+    proc.stdin.on( 'error', function() {
+        console.log( 'error on stdin of', proc.pid );
+    } );
+
+    proc.on( 'message', function( message ) {
+        self.updateData( message );
+        if ( message ) {
+            self.emit( 'item', message );
+        }
+    } );
+
+    proc.stdout.on( 'data', function( m ) {
+        // console.log( 'reading from child', m.toString(), 'end reading' );
+        messages = m.toString().split( '\n' );
+        messages.forEach( function( message ) {
+            if ( !message.length ) {
+                return;
+            }
+            if ( opts.outputFormat == 'number' ) {
+                message = +message;
+            }
+            self.updateData( message );
+            // console.log( 'child sent data', proc.pid, message );
+            if ( message ) {
+                self.emit( 'item', message );
+            }
         } );
-
-        proc.stdout.on( 'data', function( m ) {
-            // console.log( 'reading from child', m.toString(), 'end reading' );
-            messages = m.toString().split( '\n' );
-            messages.forEach( function( message ) {
-                if ( !message.length ) {
-                    return;
-                }
-                if ( opts.outputFormat == 'number' ) {
-                    message = +message;
-                }
-                self.updateData( message );
-                // console.log( 'child sent data', proc.pid, message );
-                if ( message ) {
-                    self.emit( 'item', message );
-                }
-            } );
-        } );
+    } );
 
 
-        proc.on( 'exit', function() {
-            // console.log( 'proc', proc.pid, 'finished' );
-            self.complete();
-        } );
-    }
+    proc.on( 'exit', function() {
+        // console.log( 'proc', proc.pid, 'finished' );
+        self.complete();
+    } );
 }
 
 inherits( Pipeline, EventEmitter );
 
+Pipeline.prototype.attach = function( child ) {
+    this.children.push( child );
+    this.proc.stdout.pipe( child.proc.stdin );
+    this.proc.on( 'message', function( msg ) {
+        child.proc.send( msg );
+    } );
+    return child;
+};
 Pipeline.prototype.fork = function( f, context, opts ) {
     opts = opts || {};
     if ( !opts.inputFormat ) {
@@ -76,10 +95,7 @@ Pipeline.prototype.fork = function( f, context, opts ) {
         opts.outputFormat = opts.inputFormat;
     }
     var child = new Pipeline( f, context, opts );
-    if ( this.proc ) {
-        this.proc.stdout.pipe( child.proc.stdin );
-    }
-    this.children.push( child );
+    this.attach( child );
     return child;
 };
 Pipeline.prototype.updateData = function( item ) {
@@ -118,9 +134,7 @@ Pipeline.prototype.complete = function() {
 };
 Pipeline.prototype.close = function() {
     // console.log( 'killing proc', proc.pid );
-    if ( proc ) {
-        proc.kill();
-    }
+    // this.proc.kill();
     this.children.forEach( function( child ) {
         child.close();
     } );

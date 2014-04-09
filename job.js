@@ -1,17 +1,13 @@
 var fs = require( 'fs' );
+var argv = require( 'minimist' )( process.argv.slice( 2 ) );
 
 function functionReviver(key, value) {
-    if (key === '') {
-        return value;
-    }
-
     if (typeof value === 'string') {
         var rfunc = /^function[^\(]*\(([^\)]*)\)[^\{]*{([\s\S]*)\}$/,
             match = value.match(rfunc);
 
         if (match) {
             var args = match[1].split(',').map(function(arg) { return arg.replace(/\s+/, ''); });
-            // console.error( 'matched', match[ 2 ], 'end' );
 
             /*jshint evil:true */
             return new Function(args, match[2]);
@@ -20,77 +16,99 @@ function functionReviver(key, value) {
     return value;
 }
 
-var arg = process.argv[ 2 ];
-var opts = JSON.parse( arg, functionReviver );
-var outputFormat = opts.outputFormat;
-var inputFormat = opts.inputFormat;
+function Job( script, context, opts ) {
+    this.script = script;
+    this.context = context;
+    this.outputFormat = opts.outputFormat || 'string';
+    this.inputFormat = opts.inputFormat || 'string';
+    this.outbuf = '';
 
-var script = opts.script;
-var context = opts.context || {};
-for ( var i in context ) {
-    global[ i ] = context[ i ];
-}
-global.fs = fs;
-
-var outbuf = '';
-var d = '';
-process.stdin.on( 'readable', function() {
-    d += process.stdin.read();
-    if ( d === null ) {
-        return;
+    for ( var i in context ) {
+        global[ i ] = context[ i ];
     }
-    //console.error( 'message on', process.pid, d.toString('ascii') );
-    var messages = d.toString('ascii').split( '\n' );
-    var i = 0;
+    global.fs = fs;
+
+    var inbuf = '';
+    var self = this;
+    process.stdin.on( 'readable', function() {
+        data = process.stdin.read();
+        if ( data === null ) {
+            return;
+        }
+        if ( inbuf ) {
+            data = inbuf + data;
+        }
+        //console.error( 'message on', process.pid, data.toString('ascii') );
+        var messages = data.toString('ascii').split( '\n' );
+        var i = 0;
+        while ( i < messages.length ) {
+            var message = messages[ i ];
+            if (i === messages.length - 1 ) {
+                inbuf = message;
+                ++i;
+                continue;
+            }
+            if ( !message.length ) {
+                ++i;
+                continue;
+            }
+            self.execute( message );
+            ++i;
+        }
+    } );
+
+    process.stdin.on( 'end', function() {
+        // console.error( 'data on end', outbuf.length, outbuf );
+        process.stdout.write( self.outbuf, 'ascii' );
+        self.outbuf = '';
+        // process.exit();
+    } );
+}
+
+Job.prototype.execute = function( input ) {
     var _data;
-    while ( i < messages.length ) {
-        var message = messages[ i ];
-        if (i === messages.length - 1 ) {
-            d = message;
-            ++i;
-            continue;
-        }
-        if ( !message.length ) {
-            ++i;
-            continue;
-        }
-        if ( inputFormat === 'number' ) {
-            _data = +message; // TODO: other types
+    if ( this.inputFormat === 'number' ) {
+        _data = +input; // TODO: other types
+    }
+    else {
+        _data = input;
+    }
+    var _result;
+    if ( _data ) {
+        _result = script( _data );
+    }
+    // var _result = script.runInNewContext( context );
+    // console.error( 'process', process.pid, JSON.stringify( message ), _result );
+    if ( _result ) {
+        if ( Array.isArray( _result ) && outputFormat !== 'array' ) {
+            for ( var j = 0; j < _result.length; ++j ) {
+                this.outbuf += _result[ j ] + '\n';
+            }
         }
         else {
-            _data = message;
+            this.outbuf += _result + '\n';
         }
-        var _result;
-        if ( _data ) {
-            _result = script( _data );
-        }
-        // var _result = script.runInNewContext( context );
-        // console.error( 'process', process.pid, JSON.stringify( message ), _result );
-        if ( _result ) {
-            if ( Array.isArray( _result ) && outputFormat !== 'array' ) {
-                for ( var j = 0; j < _result.length; ++j ) {
-                    outbuf += _result[ j ] + '\n';
-                }
-            }
-            else {
-                outbuf += _result + '\n';
-            }
-            if ( outbuf.length > 100 ) {
-                var b = process.stdout.write( outbuf, 'ascii' );
-                if ( b ) {
-                    outbuf = '';
-                }
+        if ( this.outbuf.length > 100 ) {
+            var b = process.stdout.write( this.outbuf, 'ascii' );
+            if ( b ) {
+                this.outbuf = '';
             }
         }
-        ++i;
     }
-} );
+};
 
+function print_usage() {
+    console.log( 'Usage:', process.argv[ 0 ], process.argv[ 1 ], " --script FUNCTION [--context JSON --inputFormat number|string|array|object --outputFormat number|string|array|object]" );
+}
 
-process.stdin.on( 'end', function() {
-    // console.error( 'data on end', outbuf.length, outbuf );
-    process.stdout.write( outbuf, 'ascii' );
-    outbuf = '';
-    // process.exit();
-} );
-// console.error( 'process:', process.pid, 'job:', script, 'context: ', context );
+if ( !argv[ 'script' ] ) {
+    print_usage();
+    process.exit( 1 );
+}
+
+var script = functionReviver( '', argv[ 'script' ] );
+var outputFormat = argv.outputFormat;
+var inputFormat = argv.inputFormat;
+var context = argv.context ? JSON.parse( argv.context, functionReviver ) : {};
+var job = new Job( script, context, { outputFormat: outputFormat, inputFormat: inputFormat } );
+// console.error( 'process:', process.pid, 'job:', script, 'context:', context, inputFormat, outputFormat );
