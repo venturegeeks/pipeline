@@ -175,7 +175,7 @@ Pipeline.readFile = function( fileName ) {
             if ( !bytesRead ) {
                 break;
             }
-            process.stdout.write( buffer, 'ascii' );
+            process.stdout.write( buffer.slice( 0, bytesRead ), 'ascii' );
         }
         process.exit();
     }, { fileName: fileName }, { outputFormat: 'string' } );
