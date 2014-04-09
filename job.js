@@ -57,11 +57,16 @@ function Job( script, context, opts ) {
         }
     } );
 
+    process.on( 'message', function( message ) {
+        // console.error( 'got message', message, process.pid );
+        self.execute( message );
+    } );
+
     process.stdin.on( 'end', function() {
         // console.error( 'data on end', outbuf.length, outbuf );
         process.stdout.write( self.outbuf, 'ascii' );
         self.outbuf = '';
-        // process.exit();
+        process.exit();
     } );
 }
 
@@ -78,8 +83,12 @@ Job.prototype.execute = function( input ) {
         _result = script( _data );
     }
     // var _result = script.runInNewContext( context );
-    // console.error( 'process', process.pid, JSON.stringify( message ), _result );
+    // console.error( 'process', process.pid, JSON.stringify( _data ), JSON.stringify( _result ) );
     if ( _result ) {
+        if ( this.outputFormat == 'object' ) {
+            process.send( _result );
+            return;
+        }
         if ( Array.isArray( _result ) && outputFormat !== 'array' ) {
             for ( var j = 0; j < _result.length; ++j ) {
                 this.outbuf += _result[ j ] + '\n';

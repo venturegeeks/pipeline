@@ -8,17 +8,24 @@ Pipeline.range( 1, 1000 ).filter( function( x ) {
     console.log( 'total', total );
 } );
 
-Pipeline.range( 1, 10 ).map( function( x ) {
-    return "" + x;
-}, { outputFormat: 'string' } ).reduce( "", function( x, sofar ) {
+Pipeline.range( 1, 10 ).reduce( "", function( x, sofar ) {
     return sofar + x;
-} ).on( 'complete', function( data ) {
+}, { outputFormat: "string" } ).on( 'complete', function( data ) {
     // output: 123456789
     console.log( "numbers", data );
 } );
 
-Pipeline.readFile( './LICENSE' ).reduce( 0, function( line, sofar ) {
-    return sofar + line.match( /\S+/g ).length;
-} ).on( 'complete', function( total ) {
-    console.log( 'license word count', total );
+Pipeline.readFile( './LICENSE' ).map( function( line ) {
+    return line.replace( /[,.!?\/\\:"\'(){}\[\]'-]/g, '' ).toLowerCase().split( ' ' );
+} ).reduce( {}, function( word, sofar ) {
+    // console.log( foo );
+    if ( !( word in sofar ) ) {
+        sofar[ word ] = 1;
+    }
+    else {
+        sofar[ word ] += 1;
+    }
+    return sofar;
+}, { outputFormat: 'object' } ).on( 'complete', function( dict ) {
+    console.log( 'Word frequency of LICENSE file:', dict );
 } );
